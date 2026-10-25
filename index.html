@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marcador de Fútbol Personalizado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            user-select: none;
+        }
+        .arcade-font {
+            font-family: 'Fredoka One', cursive, sans-serif;
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-3px, 0px) rotate(-1deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            80% { transform: translate(1px, -1px) rotate(-1deg); }
+            100% { transform: translate(1px, -2px) rotate(1deg); }
+        }
+        .screen-shake {
+            animation: shake 0.4s ease-in-out;
+        }
+        @keyframes popUp {
+            0% { transform: scale(0.2); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-anim {
+            animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
+            50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.9), 0 0 50px rgba(245, 158, 11, 0.8); }
+        }
+        .on-fire {
+            animation: pulseGlow 1.2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-between p-4 relative overflow-x-hidden" id="mainBody">
+
+    <!-- PANTALLA DE CONFIGURACIÓN DE TORNEO PERSONALIZADO -->
+    <div id="tournamentScreen" class="fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div class="bg-slate-900 border-2 border-yellow-500/50 p-8 rounded-3xl shadow-2xl max-w-md w-full pop-anim">
+            <span class="text-5xl mb-3 block">🏆</span>
+            <h1 class="arcade-font text-3xl text-yellow-400 mb-2">CONFIGURA TU TORNEO</h1>
+            <p class="text-slate-300 mb-6 text-sm">Ingresa el nombre y sube la imagen del trofeo que estará en juego:</p>
+            
+            <div class="space-y-4 text-left mb-6">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Nombre del Torneo:</label>
+                    <input type="text" id="inputTournamentName" value="Copa Relámpago 2026" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-yellow-400 font-semibold">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Imagen / Trofeo del Torneo:</label>
+                    <input type="file" id="inputTournamentImage" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-yellow-400 hover:file:bg-slate-700 cursor-pointer">
+                </div>
+            </div>
+
+            <button onclick="startTournament()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 arcade-font py-4 rounded-2xl shadow-xl text-xl transition transform hover:scale-105 font-bold">
+                ¡Comenzar Partido! ⚽
+            </button>
+        </div>
+    </div>
+
+    <!-- CABECERA -->
+    <header class="w-full max-w-6xl flex flex-col md:flex-row items-center justify-between bg-slate-900/80 backdrop-blur-md px-6 py-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
+        <div class="flex items-center gap-3">
+            <div id="headerCupIconContainer" class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-2 border-yellow-500 shadow-inner">
+                <img id="headerCupImg" src="" alt="Copa" class="w-full h-full object-cover hidden">
+                <span id="headerCupFallback" class="text-2xl">🏆</span>
+            </div>
+            <div>
+                <h1 class="arcade-font text-2xl md:text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500" id="headerTitle">MARCADOR</h1>
+                <p class="text-xs text-slate-400 uppercase font-semibold tracking-widest" id="headerCupSubtitle">Copa Relámpago 2026</p>
+            </div>
+        </div>
+
+        <!-- RELOJ Y TIEMPO -->
+        <div class="flex flex-col items-center bg-slate-950/70 px-6 py-2 rounded-xl border border-slate-800">
+            <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-1" id="halfIndicator">1er Tiempo</div>
+            <div class="arcade-font text-3xl md:text-4xl text-white tracking-widest" id="matchTimer">05:00</div>
+        </div>
+
+        <!-- CONTROLES DE RELOJ -->
+        <div class="flex items-center gap-2">
+            <button onclick="toggleTimer()" id="btnPlayPause" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl font-bold transition shadow-lg flex items-center gap-1 text-sm">
+                ▶ Iniciar
+            </button>
+            <button onclick="resetTimer()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl font-bold transition text-sm">
+                🔄
+            </button>
+            <button onclick="openSettings()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl font-bold transition text-sm" title="Configurar Partido">
+                ⚙️
+            </button>
+        </div>
+    </header>
+
+    <!-- CUERPO PRINCIPAL / MARCADOR -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-11 gap-6 my-6 items-center">
+        
+        <!-- EQUIPO A -->
+        <div id="cardTeamA" class="lg:col-span-5 bg-slate-900/90 border-2 border-slate-800 rounded-3xl p-6 flex flex-col items-center shadow-2xl relative transition-all duration-300">
+            <div id="fireBadgeA" class="absolute top-4 left-4 hidden bg-gradient-to-r from-red-600 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-bounce">
+                🔥 ON FIRE
+            </div>
+            
+            <div class="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner mb-4 cursor-pointer" onclick="openTeamSettings('A')">
+                <img id="logoDisplayA" src="" alt="Logo A" class="w-full h-full object-cover hidden">
+                <span id="logoFallbackA" class="text-4xl">⚽</span>
+            </div>
+
+            <h2 id="nameDisplayA" class="arcade-font text-2xl md:text-3xl text-center text-white mb-1">LOCAL</h2>
+            <p id="captainDisplayA" class="text-xs text-yellow-400 font-semibold mb-6">Cap. Juan #10</p>
+
+            <div id="scoreA" class="arcade-font text-7xl md:text-9xl text-yellow-400 mb-6 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">0</div>
+
+            <div class="flex items-center gap-4 w-full justify-center">
+                <button onclick="changeScore('A', -1)" class="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-700/50 w-16 h-16 rounded-2xl arcade-font text-2xl transition transform active:scale-95 shadow-lg">-1</button>
+                <button onclick="changeScore('A', 1)" class="bg-green-600 hover:bg-green-500 text-white flex-1 max-w-[200px] h-16 rounded-2xl arcade-font text-3xl transition transform active:scale-95 shadow-lg flex items-center justify-center gap-2">+1 ⚽</button>
+            </div>
+        </div>
+
+        <!-- VS CENTRAL -->
+        <div class="lg:col-span-1 flex flex-col items-center justify-center gap-4 my-2 lg:my-0">
+            <span class="arcade-font text-3xl text-slate-600">VS</span>
+        </div>
+
+        <!-- EQUIPO B -->
+        <div id="cardTeamB" class="lg:col-span-5 bg-slate-900/90 border-2 border-slate-800 rounded-3xl p-6 flex flex-col items-center shadow-2xl relative transition-all duration-300">
+            <div id="fireBadgeB" class="absolute top-4 right-4 hidden bg-gradient-to-r from-red-600 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-bounce">
+                🔥 ON FIRE
+            </div>
+
+            <div class="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner mb-4 cursor-pointer" onclick="openTeamSettings('B')">
+                <img id="logoDisplayB" src="" alt="Logo B" class="w-full h-full object-cover hidden">
+                <span id="logoFallbackB" class="text-4xl">🛡️</span>
+            </div>
+
+            <h2 id="nameDisplayB" class="arcade-font text-2xl md:text-3xl text-center text-white mb-1">VISITANTE</h2>
+            <p id="captainDisplayB" class="text-xs text-yellow-400 font-semibold mb-6">Cap. Carlos #7</p>
+
+            <div id="scoreB" class="arcade-font text-7xl md:text-9xl text-yellow-400 mb-6 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">0</div>
+
+            <div class="flex items-center gap-4 w-full justify-center">
+                <button onclick="changeScore('B', -1)" class="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-700/50 w-16 h-16 rounded-2xl arcade-font text-2xl transition transform active:scale-95 shadow-lg">-1</button>
+                <button onclick="changeScore('B', 1)" class="bg-green-600 hover:bg-green-500 text-white flex-1 max-w-[200px] h-16 rounded-2xl arcade-font text-3xl transition transform active:scale-95 shadow-lg flex items-center justify-center gap-2">+1 ⚽</button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- PIE / TEMAS VISUALES -->
+    <footer class="w-full max-w-6xl flex flex-col sm:flex-row items-center justify-between text-slate-500 text-xs py-4 border-t border-slate-900 gap-4">
+        <div class="flex items-center gap-2">
+            <span>Tema Visual:</span>
+            <select id="themeSelector" onchange="changeTheme(this.value)" class="bg-slate-900 text-slate-300 border border-slate-700 rounded-lg px-2 py-1 outline-none text-xs">
+                <option value="arcade">Neón Arcade</option>
+                <option value="comic">Cómic Cartoon</option>
+                <option value="cyber">Cyberpunk Space</option>
+                <option value="turf">Cancha de Pasto</option>
+            </select>
+        </div>
+        <p>Marcador de Fútbol Interactivo • ¡Listo para jugar!</p>
+    </footer>
+
+    <!-- POP-UP DE GOL ANIMADO -->
+    <div id="goalPopup" class="fixed inset-0 pointer-events-none z-40 flex items-center justify-center hidden">
+        <div class="arcade-font text-6xl md:text-8xl text-yellow-300 drop-shadow-[0_15px_15px_rgba(0,0,0,0.9)] text-center tracking-wider pop-anim" id="goalPopupText">
+            ¡SUPER GOLAZO!
+        </div>
+    </div>
+
+    <!-- OVERLAY DE MEDIO TIEMPO -->
+    <div id="halfTimeOverlay" class="fixed inset-0 bg-slate-950/90 z-50 flex flex-col items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border-2 border-yellow-500/50 p-8 rounded-3xl shadow-2xl max-w-md w-full text-center pop-anim">
+            <span class="text-5xl mb-3 block">⏸️</span>
+            <h2 class="arcade-font text-3xl text-yellow-400 mb-2">MEDIO TIEMPO</h2>
+            <p class="text-slate-300 mb-6">El primer tiempo ha concluido. ¡A recargar energías!</p>
+            <div class="flex justify-center gap-4 text-2xl font-bold mb-8">
+                <span id="htScoreA">0</span> - <span id="htScoreB">0</span>
+            </div>
+            <button onclick="startSecondHalf()" class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white arcade-font py-4 rounded-2xl shadow-xl text-xl transition transform hover:scale-105">
+                Iniciar 2do Tiempo ▶
+            </button>
+        </div>
+    </div>
+
+    <!-- OVERLAY DE GANADOR / FINAL DE TORNEO -->
+    <div id="winnerOverlay" class="fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center p-6 hidden">
+        <div class="bg-slate-900 border-2 border-yellow-400 p-8 rounded-3xl shadow-[0_0_50px_rgba(250,204,21,0.3)] max-w-lg w-full text-center pop-anim flex flex-col items-center">
+            <span class="text-xs uppercase tracking-widest text-yellow-400 font-bold mb-1" id="winCupName">Copa Relámpago</span>
+            <h2 class="arcade-font text-4xl text-yellow-300 mb-4">¡CAMPEÓN!</h2>
+            
+            <div id="winnerShieldContainer" class="w-28 h-28 rounded-full bg-slate-800 border-4 border-yellow-400 flex items-center justify-center overflow-hidden mb-3 shadow-xl">
+                <img id="winnerLogo" src="" alt="Logo" class="w-full h-full object-cover hidden">
+                <span id="winnerFallback" class="text-5xl">🏆</span>
+            </div>
+            <h3 id="winnerTeamName" class="arcade-font text-2xl text-white mb-6">NOMBRE DEL EQUIPO</h3>
+
+            <!-- IMAGEN GRANDE DEL TROFEO DEL TORNEO -->
+            <div class="w-48 h-48 mb-6 flex items-center justify-center drop-shadow-[0_10px_20px_rgba(250,204,21,0.5)] overflow-hidden rounded-2xl bg-slate-950/50 border border-yellow-500/30">
+                <img id="winnerTrophyImg" src="" alt="Trofeo" class="max-h-full max-w-full object-contain hidden">
+                <span id="winnerTrophyFallback" class="text-6xl">🏆</span>
+            </div>
+
+            <button onclick="resetFullMatch()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 arcade-font py-4 rounded-2xl shadow-xl text-xl transition transform hover:scale-105 font-bold">
+                Jugar Nuevo Partido 🔄
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIGURACIÓN GENERAL -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-3xl max-w-md w-full shadow-2xl">
+            <h3 class="arcade-font text-xl text-white mb-4 flex items-center justify-between">
+                <span>⚙️ Configurar Partido</span>
+                <button onclick="closeSettings()" class="text-slate-400 hover:text-white">✕</button>
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Duración de cada Tiempo:</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setDuration(1)" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-xl text-xs font-bold">1 min</button>
+                        <button onclick="setDuration(3)" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-xl text-xs font-bold">3 min</button>
+                        <button onclick="setDuration(5)" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-xl text-xs font-bold bg-green-600 text-white">5 min</button>
+                        <button onclick="setDuration(10)" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-xl text-xs font-bold">10 min</button>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex gap-3">
+                    <button onclick="closeSettings()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold text-sm">Cancelar</button>
+                    <button onclick="openTournamentScreen()" class="flex-1 bg-amber-600 hover:bg-amber-500 py-3 rounded-xl font-bold text-sm">Cambiar Torneo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIGURACIÓN DE EQUIPO -->
+    <div id="teamSettingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-3xl max-w-md w-full shadow-2xl">
+            <h3 class="arcade-font text-xl text-white mb-4 flex items-center justify-between">
+                <span id="teamModalTitle">Configurar Equipo</span>
+                <button onclick="closeTeamSettings()" class="text-slate-400 hover:text-white">✕</button>
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Nombre del Equipo:</label>
+                    <input type="text" id="inputTeamName" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white outline-none focus:border-yellow-400 font-semibold">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Nombre del Capitán:</label>
+                    <input type="text" id="inputCaptainName" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white outline-none focus:border-yellow-400 font-semibold" placeholder="Ej. Lionel Messi">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Número de Jersey del Capitán:</label>
+                    <input type="text" id="inputCaptainNumber" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white outline-none focus:border-yellow-400 font-semibold" placeholder="Ej. #10">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Escudo / Logo (Imagen):</label>
+                    <input type="file" id="inputTeamLogo" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-yellow-400 hover:file:bg-slate-700 cursor-pointer">
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex gap-3">
+                    <button onclick="closeTeamSettings()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold text-sm">Cancelar</button>
+                    <button onclick="saveTeamSettings()" class="flex-1 bg-green-600 hover:bg-green-500 py-3 rounded-xl font-bold text-sm">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tournamentData = {
+            name: 'Copa Relámpago 2026',
+            image: ''
+        };
+
+        let scoreA = 0;
+        let scoreB = 0;
+        let teamA = { name: 'LOCAL', captain: 'Cap. Juan', number: '#10', logo: '' };
+        let teamB = { name: 'VISITANTE', captain: 'Cap. Carlos', number: '#7', logo: '' };
+        let activeTeamModal = null;
+        let tempTournamentImage = '';
+
+        // CONFIGURACIÓN INICIAL DEL TORNEO
+        document.getElementById('inputTournamentImage').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    tempTournamentImage = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function startTournament() {
+            const nameInput = document.getElementById('inputTournamentName').value.trim();
+            if (nameInput) tournamentData.name = nameInput;
+            tournamentData.image = tempTournamentImage;
+
+            // Actualizar interfaz con los datos del torneo
+            document.getElementById('headerCupSubtitle').innerText = tournamentData.name;
+            
+            const headerImg = document.getElementById('headerCupImg');
+            const headerFall = document.getElementById('headerCupFallback');
+            if (tournamentData.image) {
+                headerImg.src = tournamentData.image;
+                headerImg.classList.remove('hidden');
+                headerFall.classList.add('hidden');
+            } else {
+                headerImg.classList.add('hidden');
+                headerFall.classList.remove('hidden');
+            }
+
+            document.getElementById('tournamentScreen').classList.add('hidden');
+            resetFullMatch();
+        }
+
+        function openTournamentScreen() {
+            closeSettings();
+            document.getElementById('inputTournamentName').value = tournamentData.name;
+            document.getElementById('tournamentScreen').classList.remove('hidden');
+        }
+
+        // CONTROL DE GOLES Y RACHAS
+        function changeScore(team, delta) {
+            if (team === 'A') {
+                scoreA = Math.max(0, scoreA + delta);
+                document.getElementById('scoreA').innerText = scoreA;
+                if (delta > 0) triggerGoalAnimation();
+            } else {
+                scoreB = Math.max(0, scoreB + delta);
+                document.getElementById('scoreB').innerText = scoreB;
+                if (delta > 0) triggerGoalAnimation();
+            }
+            checkOnFire();
+        }
+
+        function triggerGoalAnimation() {
+            const popup = document.getElementById('goalPopup');
+            const popupText = document.getElementById('goalPopupText');
+            const phrases = ["¡GOLAZO!", "¡SUPER GOL!", "¡BOMBAZO!", "¡INCREÍBLE!"];
+            popupText.innerText = phrases[Math.floor(Math.random() * phrases.length)];
+            
+            popup.classList.remove('hidden');
+            document.getElementById('mainBody').classList.add('screen-shake');
+
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+
+            setTimeout(() => {
+                popup.classList.add('hidden');
+                document.getElementById('mainBody').classList.remove('screen-shake');
+            }, 800);
+        }
+
+        function checkOnFire() {
+            const diff = scoreA - scoreB;
+            const badgeA = document.getElementById('fireBadgeA');
+            const badgeB = document.getElementById('fireBadgeB');
+            const cardA = document.getElementById('cardTeamA');
+            const cardB = document.getElementById('cardTeamB');
+
+            badgeA.classList.add('hidden');
+            badgeB.classList.add('hidden');
+            cardA.classList.remove('on-fire', 'border-red-500');
+            cardB.classList.remove('on-fire', 'border-red-500');
+
+            if (diff >= 2 && scoreA >= 3) {
+                badgeA.classList.remove('hidden');
+                cardA.classList.add('on-fire', 'border-red-500');
+            } else if (diff <= -2 && scoreB >= 3) {
+                badgeB.classList.remove('hidden');
+                cardB.classList.add('on-fire', 'border-red-500');
+            }
+        }
+
+        // CRONÓMETRO Y TIEMPOS
+        let maxMinutes = 5;
+        let timeLeft = maxMinutes * 60;
+        let timerInterval = null;
+        let isRunning = false;
+        let currentHalf = 1;
+
+        function toggleTimer() {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+                document.getElementById('btnPlayPause').innerHTML = '▶ Iniciar';
+                document.getElementById('btnPlayPause').className = 'bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl font-bold transition shadow-lg flex items-center gap-1 text-sm';
+            } else {
+                isRunning = true;
+                document.getElementById('btnPlayPause').innerHTML = '⏸ Pausar';
+                document.getElementById('btnPlayPause').className = 'bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-2 rounded-xl font-bold transition shadow-lg flex items-center gap-1 text-sm';
+                timerInterval = setInterval(() => {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(timerInterval);
+                        isRunning = false;
+                        handleHalfOrFullTime();
+                    }
+                }, 1000);
+            }
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const secs = (timeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('matchTimer').innerText = `${mins}:${secs}`;
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            timeLeft = maxMinutes * 60;
+            updateTimerDisplay();
+            document.getElementById('btnPlayPause').innerHTML = '▶ Iniciar';
+            document.getElementById('btnPlayPause').className = 'bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl font-bold transition shadow-lg flex items-center gap-1 text-sm';
+        }
+
+        function setDuration(mins) {
+            maxMinutes = mins;
+            resetTimer();
+            closeSettings();
+        }
+
+        function handleHalfOrFullTime() {
+            if (currentHalf === 1) {
+                document.getElementById('htScoreA').innerText = scoreA;
+                document.getElementById('htScoreB').innerText = scoreB;
+                document.getElementById('halfTimeOverlay').classList.remove('hidden');
+            } else {
+                showWinnerScreen();
+            }
+        }
+
+        function startSecondHalf() {
+            currentHalf = 2;
+            document.getElementById('halfIndicator').innerText = '2do Tiempo';
+            document.getElementById('halfTimeOverlay').classList.add('hidden');
+            resetTimer();
+            toggleTimer();
+        }
+
+        function showWinnerScreen() {
+            let winnerName = "";
+            let winnerLogo = "";
+            let winnerHasLogo = false;
+
+            if (scoreA > scoreB) {
+                winnerName = teamA.name;
+                winnerLogo = teamA.logo;
+                winnerHasLogo = !!teamA.logo;
+            } else if (scoreB > scoreA) {
+                winnerName = teamB.name;
+                winnerLogo = teamB.logo;
+                winnerHasLogo = !!teamB.logo;
+            } else {
+                winnerName = "¡EMPATE TÉCNICO!";
+            }
+
+            document.getElementById('winCupName').innerText = tournamentData.name;
+            document.getElementById('winnerTeamName').innerText = winnerName;
+            
+            const logoEl = document.getElementById('winnerLogo');
+            const fallbackEl = document.getElementById('winnerFallback');
+            if (winnerHasLogo && scoreA !== scoreB) {
+                logoEl.src = winnerLogo;
+                logoEl.classList.remove('hidden');
+                fallbackEl.classList.add('hidden');
+            } else {
+                logoEl.classList.add('hidden');
+                fallbackEl.classList.remove('hidden');
+                fallbackEl.innerText = scoreA === scoreB ? '🤝' : '🏆';
+            }
+
+            // IMAGEN DEL TROFEO EN PANTALLA FINAL
+            const winTrophyImg = document.getElementById('winnerTrophyImg');
+            const winTrophyFallback = document.getElementById('winnerTrophyFallback');
+            if (tournamentData.image) {
+                winTrophyImg.src = tournamentData.image;
+                winTrophyImg.classList.remove('hidden');
+                winTrophyFallback.classList.add('hidden');
+            } else {
+                winTrophyImg.classList.add('hidden');
+                winTrophyFallback.classList.remove('hidden');
+            }
+
+            document.getElementById('winnerOverlay').classList.remove('hidden');
+
+            confetti({
+                particleCount: 200,
+                spread: 100,
+                origin: { y: 0.4 }
+            });
+        }
+
+        function resetFullMatch() {
+            scoreA = 0;
+            scoreB = 0;
+            currentHalf = 1;
+            document.getElementById('scoreA').innerText = '0';
+            document.getElementById('scoreB').innerText = '0';
+            document.getElementById('halfIndicator').innerText = '1er Tiempo';
+            document.getElementById('halfTimeOverlay').classList.add('hidden');
+            document.getElementById('winnerOverlay').classList.add('hidden');
+            document.getElementById('fireBadgeA').classList.add('hidden');
+            document.getElementById('fireBadgeB').classList.add('hidden');
+            document.getElementById('cardTeamA').classList.remove('on-fire', 'border-red-500');
+            document.getElementById('cardTeamB').classList.remove('on-fire', 'border-red-500');
+            resetTimer();
+        }
+
+        // CONFIGURACIÓN DE EQUIPOS
+        let tempLogoFile = '';
+        function openTeamSettings(teamKey) {
+            activeTeamModal = teamKey;
+            const team = teamKey === 'A' ? teamA : teamB;
+            document.getElementById('teamModalTitle').innerText = `Configurar ${teamKey === 'A' ? 'Equipo Local' : 'Visitante'}`;
+            document.getElementById('inputTeamName').value = team.name;
+            document.getElementById('inputCaptainName').value = team.captain;
+            document.getElementById('inputCaptainNumber').value = team.number;
+            document.getElementById('inputTeamLogo').value = '';
+            tempLogoFile = team.logo;
+            document.getElementById('teamSettingsModal').classList.remove('hidden');
+        }
+
+        document.getElementById('inputTeamLogo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    tempLogoFile = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function saveTeamSettings() {
+            if (activeTeamModal === 'A') {
+                teamA.name = document.getElementById('inputTeamName').value || 'LOCAL';
+                teamA.captain = document.getElementById('inputCaptainName').value || '';
+                teamA.number = document.getElementById('inputCaptainNumber').value || '';
+                teamA.logo = tempLogoFile;
+                
+                document.getElementById('nameDisplayA').innerText = teamA.name;
+                document.getElementById('captainDisplayA').innerText = `${teamA.captain} ${teamA.number}`.trim();
+                
+                const imgA = document.getElementById('logoDisplayA');
+                const fallA = document.getElementById('logoFallbackA');
+                if (teamA.logo) {
+                    imgA.src = teamA.logo;
+                    imgA.classList.remove('hidden');
+                    fallA.classList.add('hidden');
+                } else {
+                    imgA.classList.add('hidden');
+                    fallA.classList.remove('hidden');
+                }
+            } else {
+                teamB.name = document.getElementById('inputTeamName').value || 'VISITANTE';
+                teamB.captain = document.getElementById('inputCaptainName').value || '';
+                teamB.number = document.getElementById('inputCaptainNumber').value || '';
+                teamB.logo = tempLogoFile;
+                
+                document.getElementById('nameDisplayB').innerText = teamB.name;
+                document.getElementById('captainDisplayB').innerText = `${teamB.captain} ${teamB.number}`.trim();
+                
+                const imgB = document.getElementById('logoDisplayB');
+                const fallB = document.getElementById('logoFallbackB');
+                if (teamB.logo) {
+                    imgB.src = teamB.logo;
+                    imgB.classList.remove('hidden');
+                    fallB.classList.add('hidden');
+                } else {
+                    imgB.classList.add('hidden');
+                    fallB.classList.remove('hidden');
+                }
+            }
+            closeTeamSettings();
+        }
+
+        function closeTeamSettings() {
+            document.getElementById('teamSettingsModal').classList.add('hidden');
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        // TEMAS VISUALES
+        function changeTheme(theme) {
+            const body = document.getElementById('mainBody');
+            if (theme === 'arcade') {
+                body.className = "bg-slate-950 text-white min-h-screen flex flex-col items-center justify-between p-4 relative overflow-x-hidden";
+            } else if (theme === 'comic') {
+                body.className = "bg-yellow-400 text-slate-900 min-h-screen flex flex-col items-center justify-between p-4 relative overflow-x-hidden font-bold";
+            } else if (theme === 'cyber') {
+                body.className = "bg-gradient-to-br from-purple-950 via-slate-950 to-blue-950 text-cyan-300 min-h-screen flex flex-col items-center justify-between p-4 relative overflow-x-hidden";
+            } else if (theme === 'turf') {
+                body.className = "bg-gradient-to-br from-emerald-900 via-green-950 to-slate-950 text-white min-h-screen flex flex-col items-center justify-between p-4 relative overflow-x-hidden";
+            }
+        }
+    </script>
+</body>
+</html>
