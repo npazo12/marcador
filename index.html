@@ -156,6 +156,33 @@
 
     </main>
 
+    <!-- PANEL DE INCIDENCIAS RÁPIDAS -->
+    <section class="w-full max-w-6xl bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl my-4">
+        <h3 class="text-xs uppercase font-bold text-slate-400 tracking-wider mb-3 text-center">Registro de Incidencias del Partido</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <button onclick="openIncidentModal('Falta')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-3 px-4 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shadow">
+                ⚠️ Falta
+            </button>
+            <button onclick="openIncidentModal('Amarilla')" class="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40 py-3 px-4 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shadow">
+                🟨 T. Amarilla
+            </button>
+            <button onclick="openIncidentModal('Roja')" class="bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-600/40 py-3 px-4 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shadow">
+                🟥 T. Roja
+            </button>
+            <button onclick="openIncidentModal('Cambio')" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-600/40 py-3 px-4 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 shadow">
+                🔄 Cambio
+            </button>
+        </div>
+    </section>
+
+    <!-- HISTORIAL DEL PARTIDO (BITÁCORA) -->
+    <section class="w-full max-w-6xl bg-slate-950/80 border border-slate-900 rounded-2xl p-4 shadow-inner mb-6 max-h-40 overflow-y-auto">
+        <h4 class="text-xs uppercase font-bold text-slate-500 tracking-wider mb-2 sticky top-0 bg-slate-950 py-1">Historial de Eventos</h4>
+        <div id="matchHistoryList" class="space-y-2 text-xs text-slate-300">
+            <p class="text-slate-600 italic">No hay incidencias registradas aún en este partido.</p>
+        </div>
+    </section>
+
     <!-- PIE / TEMAS VISUALES -->
     <footer class="w-full max-w-6xl flex flex-col sm:flex-row items-center justify-between text-slate-500 text-xs py-4 border-t border-slate-900 gap-4">
         <div class="flex items-center gap-2">
@@ -174,6 +201,15 @@
     <div id="goalPopup" class="fixed inset-0 pointer-events-none z-40 flex items-center justify-center hidden">
         <div class="arcade-font text-6xl md:text-8xl text-yellow-300 drop-shadow-[0_15px_15px_rgba(0,0,0,0.9)] text-center tracking-wider pop-anim" id="goalPopupText">
             ¡SUPER GOLAZO!
+        </div>
+    </div>
+
+    <!-- POP-UP DE INCIDENCIAS ANIMADAS (FALTAS, TARJETAS, CAMBIOS) -->
+    <div id="incidentPopup" class="fixed inset-0 pointer-events-none z-40 flex items-center justify-center hidden bg-slate-950/60 backdrop-blur-sm">
+        <div class="text-center pop-anim p-6 rounded-3xl border-4 shadow-2xl max-w-xl mx-4" id="incidentPopupCard">
+            <span class="text-7xl md:text-8xl mb-2 block" id="incidentPopupEmoji">🟨</span>
+            <h2 class="arcade-font text-4xl md:text-6xl text-white drop-shadow-md uppercase tracking-wider mb-2" id="incidentPopupTitle">TARJETA AMARILLA</h2>
+            <p class="text-xl md:text-2xl font-bold text-yellow-300" id="incidentPopupSubtitle">Equipo Local • Juan #10</p>
         </div>
     </div>
 
@@ -204,7 +240,6 @@
             </div>
             <h3 id="winnerTeamName" class="arcade-font text-2xl text-white mb-6">NOMBRE DEL EQUIPO</h3>
 
-            <!-- IMAGEN GRANDE DEL TROFEO DEL TORNEO -->
             <div class="w-48 h-48 mb-6 flex items-center justify-center drop-shadow-[0_10px_20px_rgba(250,204,21,0.5)] overflow-hidden rounded-2xl bg-slate-950/50 border border-yellow-500/30">
                 <img id="winnerTrophyImg" src="" alt="Trofeo" class="max-h-full max-w-full object-contain hidden">
                 <span id="winnerTrophyFallback" class="text-6xl">🏆</span>
@@ -280,6 +315,36 @@
         </div>
     </div>
 
+    <!-- MODAL PARA REGISTRAR INCIDENCIA -->
+    <div id="incidentModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-3xl max-w-md w-full shadow-2xl">
+            <h3 class="arcade-font text-xl text-white mb-4 flex items-center justify-between">
+                <span id="incidentModalTitle">Registrar Evento</span>
+                <button onclick="closeIncidentModal()" class="text-slate-400 hover:text-white">✕</button>
+            </h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Equipo:</label>
+                    <select id="incidentTeamSelect" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-yellow-400 font-semibold text-sm">
+                        <option value="A">LOCAL</option>
+                        <option value="B">VISITANTE</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Jugador / Detalle:</label>
+                    <input type="text" id="incidentPlayerInput" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-yellow-400 font-semibold text-sm" placeholder="Ej. Juan #10 o Ingresa jugador">
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex gap-3">
+                    <button onclick="closeIncidentModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold text-sm">Cancelar</button>
+                    <button onclick="submitIncident()" class="flex-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 py-3 rounded-xl font-bold text-sm">Registrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let tournamentData = {
             name: 'Copa Relámpago 2026',
@@ -292,6 +357,8 @@
         let teamB = { name: 'VISITANTE', captain: 'Cap. Carlos', number: '#7', logo: '' };
         let activeTeamModal = null;
         let tempTournamentImage = '';
+        let matchHistory = [];
+        let currentIncidentType = '';
 
         // CONFIGURACIÓN INICIAL DEL TORNEO
         document.getElementById('inputTournamentImage').addEventListener('change', function(e) {
@@ -310,7 +377,6 @@
             if (nameInput) tournamentData.name = nameInput;
             tournamentData.image = tempTournamentImage;
 
-            // Actualizar interfaz con los datos del torneo
             document.getElementById('headerCupSubtitle').innerText = tournamentData.name;
             
             const headerImg = document.getElementById('headerCupImg');
@@ -339,11 +405,17 @@
             if (team === 'A') {
                 scoreA = Math.max(0, scoreA + delta);
                 document.getElementById('scoreA').innerText = scoreA;
-                if (delta > 0) triggerGoalAnimation();
+                if (delta > 0) {
+                    triggerGoalAnimation();
+                    addHistoryItem('⚽ Gol', teamA.name, teamA.captain);
+                }
             } else {
                 scoreB = Math.max(0, scoreB + delta);
                 document.getElementById('scoreB').innerText = scoreB;
-                if (delta > 0) triggerGoalAnimation();
+                if (delta > 0) {
+                    triggerGoalAnimation();
+                    addHistoryItem('⚽ Gol', teamB.name, teamB.captain);
+                }
             }
             checkOnFire();
         }
@@ -388,6 +460,107 @@
                 badgeB.classList.remove('hidden');
                 cardB.classList.add('on-fire', 'border-red-500');
             }
+        }
+
+        // GESTIÓN DE INCIDENCIAS (Faltas, Tarjetas, Cambios)
+        function openIncidentModal(type) {
+            currentIncidentType = type;
+            document.getElementById('incidentModalTitle').innerText = `Registrar ${type}`;
+            
+            // Actualizar opciones del select con los nombres actuales de los equipos
+            const select = document.getElementById('incidentTeamSelect');
+            select.innerHTML = `
+                <option value="A">${teamA.name}</option>
+                <option value="B">${teamB.name}</option>
+            `;
+            
+            document.getElementById('incidentPlayerInput').value = '';
+            document.getElementById('incidentModal').classList.remove('hidden');
+        }
+
+        function closeIncidentModal() {
+            document.getElementById('incidentModal').classList.add('hidden');
+        }
+
+        function submitIncident() {
+            const teamKey = document.getElementById('incidentTeamSelect').value;
+            const teamName = teamKey === 'A' ? teamA.name : teamB.name;
+            const player = document.getElementById('incidentPlayerInput').value.trim() || 'Jugador';
+            
+            closeIncidentModal();
+            triggerIncidentAnimation(currentIncidentType, teamName, player);
+            addHistoryItem(getIncidentIcon(currentIncidentType) + ' ' + currentIncidentType, teamName, player);
+        }
+
+        function getIncidentIcon(type) {
+            switch(type) {
+                case 'Falta': return '⚠️';
+                case 'Amarilla': return '🟨';
+                case 'Roja': return '🟥';
+                case 'Cambio': return '🔄';
+                default: return '📌';
+            }
+        }
+
+        function triggerIncidentAnimation(type, teamName, player) {
+            const popup = document.getElementById('incidentPopup');
+            const card = document.getElementById('incidentPopupCard');
+            const emojiEl = document.getElementById('incidentPopupEmoji');
+            const titleEl = document.getElementById('incidentPopupTitle');
+            const subEl = document.getElementById('incidentPopupSubtitle');
+
+            titleEl.innerText = type === 'Amarilla' ? 'TARJETA AMARILLA' : type === 'Roja' ? 'TARJETA ROJA' : type.toUpperCase();
+            subEl.innerText = `${teamName} • ${player}`;
+
+            if (type === 'Falta') {
+                emojiEl.innerText = '⚠️';
+                card.className = 'text-center pop-anim p-6 rounded-3xl border-4 shadow-2xl max-w-xl mx-4 bg-amber-950/90 border-yellow-500 text-yellow-300';
+            } else if (type === 'Amarilla') {
+                emojiEl.innerText = '🟨';
+                card.className = 'text-center pop-anim p-6 rounded-3xl border-4 shadow-2xl max-w-xl mx-4 bg-yellow-950/90 border-yellow-400 text-yellow-300';
+            } else if (type === 'Roja') {
+                emojiEl.innerText = '🟥';
+                card.className = 'text-center pop-anim p-6 rounded-3xl border-4 shadow-2xl max-w-xl mx-4 bg-red-950/90 border-red-600 text-red-300';
+            } else if (type === 'Cambio') {
+                emojiEl.innerText = '🔄';
+                card.className = 'text-center pop-anim p-6 rounded-3xl border-4 shadow-2xl max-w-xl mx-4 bg-blue-950/90 border-blue-500 text-blue-300';
+            }
+
+            popup.classList.remove('hidden');
+            setTimeout(() => {
+                popup.classList.add('hidden');
+            }, 1800);
+        }
+
+        function addHistoryItem(action, team, player) {
+            const timeStr = document.getElementById('matchTimer').innerText;
+            const halfStr = document.getElementById('halfIndicator').innerText;
+            
+            const item = {
+                time: `${halfStr} (${timeStr})`,
+                action: action,
+                team: team,
+                player: player
+            };
+
+            matchHistory.unshift(item);
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('matchHistoryList');
+            if (matchHistory.length === 0) {
+                container.innerHTML = `<p class="text-slate-600 italic">No hay incidencias registradas aún en este partido.</p>`;
+                return;
+            }
+
+            container.innerHTML = matchHistory.map(h => `
+                <div class="flex items-center justify-between bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <span class="font-semibold text-yellow-400">${h.time}</span>
+                    <span class="font-bold text-white">${h.action}</span>
+                    <span class="text-slate-300">${h.team} (${h.player})</span>
+                </div>
+            `).join('');
         }
 
         // CRONÓMETRO Y TIEMPOS
@@ -491,7 +664,6 @@
                 fallbackEl.innerText = scoreA === scoreB ? '🤝' : '🏆';
             }
 
-            // IMAGEN DEL TROFEO EN PANTALLA FINAL
             const winTrophyImg = document.getElementById('winnerTrophyImg');
             const winTrophyFallback = document.getElementById('winnerTrophyFallback');
             if (tournamentData.image) {
@@ -516,6 +688,8 @@
             scoreA = 0;
             scoreB = 0;
             currentHalf = 1;
+            matchHistory = [];
+            renderHistory();
             document.getElementById('scoreA').innerText = '0';
             document.getElementById('scoreB').innerText = '0';
             document.getElementById('halfIndicator').innerText = '1er Tiempo';
