@@ -280,7 +280,7 @@
         </div>
     </div>
 
-    <!-- OVERLAY DE GANADOR REORGANIZADO (SIN BLUR PESADO PARA GARANTIZAR VISIBILIDAD EN IPAD) -->
+    <!-- OVERLAY DE GANADOR REORGANIZADO -->
     <div id="winnerOverlay" class="flex flex-col items-center justify-center p-6 hidden overflow-y-auto bg-slate-950/95" style="background-size: cover; background-position: center; background-repeat: no-repeat;">
         <div class="bg-slate-900 border-2 border-yellow-400 p-6 rounded-3xl shadow-[0_0_50px_rgba(250,204,21,0.3)] max-w-md w-full text-center pop-anim flex flex-col items-center my-auto">
             
@@ -428,10 +428,38 @@
         let currentIncidentType = '';
         let speechEnabled = true;
 
+        // MOTOR DE AUDIO AUXILIAR (Respaldo garantizado para iPad si la voz nativa falla)
+        let audioCtx = null;
+        function playBeep() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota Re5
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } catch (e) {
+                console.log("AudioContext no disponible", e);
+            }
+        }
+
+        // FUNCIÓN DE VOZ ULTRA RESILIENTE PARA IPAD Y SAFARI
         function speakText(text) {
+            playBeep(); // Da un tono de alerta auditivo inmediato para certificar que el canal de sonido está abierto
+
             if (!speechEnabled || !('speechSynthesis' in window)) return;
             
-            window.speechSynthesis.cancel();
+            window.speechSynthesis.cancel(); // Detiene cualquier cola estancada
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'es-MX';
@@ -444,7 +472,10 @@
                 utterance.voice = spanishVoice;
             }
 
-            window.speechSynthesis.speak(utterance);
+            // Forzar inicio de la síntesis de voz en iPad
+            setTimeout(() => {
+                window.speechSynthesis.speak(utterance);
+            }, 50);
         }
 
         if ('speechSynthesis' in window) {
@@ -528,9 +559,12 @@
             document.getElementById('stepStadiumScreen').classList.add('hidden');
             resetFullMatch();
 
-            if ('speechSynthesis' in window) {
-                const dummy = new SpeechSynthesisUtterance("");
-                window.speechSynthesis.speak(dummy);
+            // Desbloqueo táctil completo para AudioContext y SpeechSynthesis en iPad
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
             }
 
             speakText(`Comienza el torneo ${tournamentData.name} en el ${tournamentData.stadium}`);
@@ -840,14 +874,12 @@
 
             winnerOverlay.classList.remove('hidden');
 
-            // NARRACIÓN DEL GANADOR
             if (scoreA !== scoreB) {
                 speakText(`¡Terminó el partido! El gran campeón de la ${tournamentData.name} es el equipo ${winnerName}!`);
             } else {
                 speakText("¡Terminó el partido en empate técnico!");
             }
 
-            // CONFETTI BILATERAL CON Z-INDEX MÁXIMO FORZADO PARA IPAD
             setTimeout(() => {
                 const duration = 3.5 * 1000;
                 const animationEnd = Date.now() + duration;
