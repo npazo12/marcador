@@ -428,20 +428,33 @@
         let currentIncidentType = '';
         let speechEnabled = true;
 
-        // SISTEMA DE AUDIO EN LÍNEA POR STREAMING (GARANTIZADO PARA IPAD / SAFARI)
+        // MOTOR DE VOZ NATIVO ROBUSTO (OPTIMIZADO PARA MÓVILES)
         function speakText(text) {
-            if (!speechEnabled) return;
-            try {
-                const encodedText = encodeURIComponent(text);
-                // Servicio de streaming de audio en línea en español
-                const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=es&client=tw-ob`;
-                const speechAudio = new Audio(audioUrl);
-                speechAudio.play().catch(e => {
-                    console.log("Audio en línea bloqueado temporalmente por política táctil:", e);
-                });
-            } catch (err) {
-                console.log("Error al reproducir audio web", err);
+            if (!speechEnabled || !('speechSynthesis' in window)) return;
+            
+            window.speechSynthesis.cancel(); // Limpia cualquier cola atascada
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'es-ES'; // Español general altamente compatible en iOS y Android
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            // Intentar asignar voz en español si el sistema la tiene disponible
+            const voices = window.speechSynthesis.getVoices();
+            const spanishVoice = voices.find(v => v.lang.includes('es') || v.lang.includes('ES'));
+            if (spanishVoice) {
+                utterance.voice = spanishVoice;
             }
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Cargar voces en segundo plano para navegadores móviles
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
         }
 
         function toggleSpeech() {
@@ -518,6 +531,12 @@
 
             document.getElementById('stepStadiumScreen').classList.add('hidden');
             resetFullMatch();
+
+            // DESBLOQUEO MAESTRO DE AUDIO: Forzar síntesis al hacer clic en comenzar
+            if ('speechSynthesis' in window) {
+                const unlockUtterance = new SpeechSynthesisUtterance(" ");
+                window.speechSynthesis.speak(unlockUtterance);
+            }
 
             speakText(`Comienza el torneo ${tournamentData.name} en el ${tournamentData.stadium}`);
         }
