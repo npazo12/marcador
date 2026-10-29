@@ -432,25 +432,34 @@
         let audioCtx = null;
         let iosUnlocked = false;
 
+        let silentAudioEl = null;
+
         function initAudio() {
             // iPadOS 17+: audio en modo "reproducción" (ignora el switch de silencio)
             try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
 
-            if (!audioCtx) {
+            // Si Safari cerró el contexto, se crea uno nuevo
+            if (!audioCtx || audioCtx.state === 'closed') {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                // Si Safari lo suspende o interrumpe, intenta reactivarlo solo
+                audioCtx.onstatechange = () => {
+                    if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+                };
             }
             if (audioCtx.state !== 'running') {
-                audioCtx.resume();
+                audioCtx.resume().catch(() => {});
             }
 
             // Truco para iPads más viejos: un <audio> silencioso en loop
             if (!iosUnlocked) {
                 iosUnlocked = true;
-                const a = document.createElement('audio');
-                a.setAttribute('playsinline', '');
-                a.loop = true;
-                a.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQQAAAAAAAA=';
-                a.play().catch(() => { iosUnlocked = false; });
+                silentAudioEl = document.createElement('audio');
+                silentAudioEl.setAttribute('playsinline', '');
+                silentAudioEl.loop = true;
+                silentAudioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQQAAAAAAAA=';
+                silentAudioEl.play().catch(() => { iosUnlocked = false; });
+            } else if (silentAudioEl && silentAudioEl.paused) {
+                silentAudioEl.play().catch(() => {});
             }
         }
 
@@ -468,6 +477,10 @@
                 u.lang = 'es-MX';
                 u.rate = 1.05;
                 u.pitch = 1.1;
+                // En iPad la voz puede dejar mudo el audio; al terminar se reactiva
+                const reactivar = () => setTimeout(initAudio, 50);
+                u.onend = reactivar;
+                u.onerror = reactivar;
                 speechSynthesis.speak(u);
             } catch (e) {
                 console.log("Error al reproducir voz:", e);
@@ -477,8 +490,16 @@
         // Efectos de sonido dinámicos para el partido
         function playSoundEffect(type) {
             if (!soundEnabled) return;
+            initAudio();
+            if (audioCtx.state === 'running') {
+                playTone(type);
+            } else {
+                audioCtx.resume().then(() => playTone(type)).catch(() => {});
+            }
+        }
+
+        function playTone(type) {
             try {
-                initAudio();
                 const now = audioCtx.currentTime;
 
                 if (type === 'goal') {
