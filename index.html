@@ -144,8 +144,11 @@
             <div class="arcade-font text-3xl md:text-4xl text-white tracking-widest" id="matchTimer">05:00</div>
         </div>
 
-        <!-- CONTROLES DE RELOJ -->
+        <!-- CONTROLES DE RELOJ Y VOZ -->
         <div class="flex items-center gap-2">
+            <button onclick="toggleSpeech()" id="btnSpeechToggle" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-bold transition shadow-lg text-sm" title="Activar/Desactivar Narrador">
+                🔊 Voz: ON
+            </button>
             <button onclick="toggleTimer()" id="btnPlayPause" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl font-bold transition shadow-lg flex items-center gap-1 text-sm">
                 ▶ Iniciar
             </button>
@@ -423,6 +426,31 @@
         let tempStadiumImage = '';
         let matchHistory = [];
         let currentIncidentType = '';
+        let speechEnabled = true;
+
+        // Función para activar la síntesis de voz (Narrador)
+        function speakText(text) {
+            if (!speechEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel(); // Detiene audios anteriores
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'es-MX'; // Español latino
+            utterance.rate = 1.05; // Velocidad dinámica
+            utterance.pitch = 1.05;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleSpeech() {
+            speechEnabled = !speechEnabled;
+            const btn = document.getElementById('btnSpeechToggle');
+            if (speechEnabled) {
+                btn.innerHTML = '🔊 Voz: ON';
+                btn.className = 'bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-bold transition shadow-lg text-sm';
+                speakText("Narrador activado");
+            } else {
+                btn.innerHTML = '🔇 Voz: OFF';
+                btn.className = 'bg-slate-800 hover:bg-slate-700 text-slate-400 px-3 py-2 rounded-xl font-bold transition shadow-lg text-sm';
+            }
+        }
 
         document.getElementById('inputTournamentImage').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -485,6 +513,7 @@
 
             document.getElementById('stepStadiumScreen').classList.add('hidden');
             resetFullMatch();
+            speakText(`Comienza el torneo ${tournamentData.name} en el ${tournamentData.stadium}`);
         }
 
         function openTournamentScreen() {
@@ -499,15 +528,17 @@
                 scoreA = Math.max(0, scoreA + delta);
                 document.getElementById('scoreA').innerText = scoreA;
                 if (delta > 0) {
-                    triggerGoalAnimation();
+                    const goalPhrase = triggerGoalAnimation();
                     addHistoryItem('⚽ Gol', teamA.name, teamA.captain);
+                    speakText(`${goalPhrase}! ¡Gol del equipo ${teamA.name}!`);
                 }
             } else {
                 scoreB = Math.max(0, scoreB + delta);
                 document.getElementById('scoreB').innerText = scoreB;
                 if (delta > 0) {
-                    triggerGoalAnimation();
+                    const goalPhrase = triggerGoalAnimation();
                     addHistoryItem('⚽ Gol', teamB.name, teamB.captain);
+                    speakText(`${goalPhrase}! ¡Gol del equipo ${teamB.name}!`);
                 }
             }
             checkOnFire();
@@ -517,8 +548,9 @@
             const popup = document.getElementById('goalPopup');
             const popupText = document.getElementById('goalPopupText');
             const phrases = ["¡GOLAZO!", "¡SUPER GOL!", "¡BOMBAZO!", "¡INCREÍBLE!"];
-            popupText.innerText = phrases[Math.floor(Math.random() * phrases.length)];
+            const selectedPhrase = phrases[Math.floor(Math.random() * phrases.length)];
             
+            popupText.innerText = selectedPhrase;
             popup.classList.remove('hidden');
             document.getElementById('mainBody').classList.add('screen-shake');
 
@@ -532,6 +564,8 @@
                 popup.classList.add('hidden');
                 document.getElementById('mainBody').classList.remove('screen-shake');
             }, 800);
+
+            return selectedPhrase; // Devuelve la misma frase para que la diga el narrador
         }
 
         function checkOnFire() {
@@ -581,6 +615,16 @@
             closeIncidentModal();
             triggerIncidentAnimation(currentIncidentType, teamName, player);
             addHistoryItem(getIncidentIcon(currentIncidentType) + ' ' + currentIncidentType, teamName, player);
+
+            if (currentIncidentType === 'Amarilla') {
+                speakText(`Tarjeta amarilla para el equipo ${teamName}, ${player}`);
+            } else if (currentIncidentType === 'Roja') {
+                speakText(`¡Tarjeta roja! Expulsado del equipo ${teamName}, ${player}`);
+            } else if (currentIncidentType === 'Cambio') {
+                speakText(`Sustitución en el equipo ${teamName}, entra ${player}`);
+            } else {
+                speakText(`Falta marcada al equipo ${teamName}`);
+            }
         }
 
         function getIncidentIcon(type) {
@@ -709,6 +753,7 @@
                 document.getElementById('htScoreA').innerText = scoreA;
                 document.getElementById('htScoreB').innerText = scoreB;
                 document.getElementById('halfTimeOverlay').classList.remove('hidden');
+                speakText("Final del primer tiempo. A descansar.");
             } else {
                 showWinnerScreen();
             }
@@ -720,6 +765,7 @@
             document.getElementById('halfTimeOverlay').classList.add('hidden');
             resetTimer();
             toggleTimer();
+            speakText("Arranca el segundo tiempo.");
         }
 
         function showWinnerScreen() {
@@ -731,12 +777,15 @@
                 winnerName = teamA.name;
                 winnerLogo = teamA.logo;
                 winnerHasLogo = !!teamA.logo;
+                speakText(`¡Terminó el partido! El gran campeón de la ${tournamentData.name} es el equipo ${winnerName}!`);
             } else if (scoreB > scoreA) {
                 winnerName = teamB.name;
                 winnerLogo = teamB.logo;
                 winnerHasLogo = !!teamB.logo;
+                speakText(`¡Terminó el partido! El gran campeón de la ${tournamentData.name} es el equipo ${winnerName}!`);
             } else {
                 winnerName = "¡EMPATE TÉCNICO!";
+                speakText("¡Terminó el partido en empate técnico!");
             }
 
             document.getElementById('winCupName').innerText = tournamentData.name;
