@@ -428,15 +428,32 @@
         let currentIncidentType = '';
         let speechEnabled = true;
 
-        // Función para activar la síntesis de voz (Narrador)
+        // FUNCIÓN DE VOZ COMPATIBLE Y ROBUSTA PARA IPAD / SAFARI
         function speakText(text) {
             if (!speechEnabled || !('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel(); // Detiene audios anteriores
+            
+            window.speechSynthesis.cancel(); // Cancela audios previos
+
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'es-MX'; // Español latino
-            utterance.rate = 1.05; // Velocidad dinámica
+            utterance.lang = 'es-MX'; // Idioma principal
+            utterance.rate = 1.05;
             utterance.pitch = 1.05;
+
+            // Búsqueda inteligente de voz en español en iOS/iPad
+            const voices = window.speechSynthesis.getVoices();
+            const spanishVoice = voices.find(v => v.lang.startsWith('es-MX') || v.lang.startsWith('es-ES') || v.lang.startsWith('es'));
+            if (spanishVoice) {
+                utterance.voice = spanishVoice;
+            }
+
             window.speechSynthesis.speak(utterance);
+        }
+
+        // Forzar carga de voces en navegadores móviles al iniciar
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
         }
 
         function toggleSpeech() {
@@ -513,6 +530,14 @@
 
             document.getElementById('stepStadiumScreen').classList.add('hidden');
             resetFullMatch();
+
+            // DESBLOQUEO TÁCTIL OBLIGATORIO PARA IPAD:
+            // Al hacer clic en este botón, activamos el canal de audio del navegador de inmediato.
+            if ('speechSynthesis' in window) {
+                const dummy = new SpeechSynthesisUtterance("");
+                window.speechSynthesis.speak(dummy);
+            }
+
             speakText(`Comienza el torneo ${tournamentData.name} en el ${tournamentData.stadium}`);
         }
 
@@ -565,7 +590,7 @@
                 document.getElementById('mainBody').classList.remove('screen-shake');
             }, 800);
 
-            return selectedPhrase; // Devuelve la misma frase para que la diga el narrador
+            return selectedPhrase;
         }
 
         function checkOnFire() {
