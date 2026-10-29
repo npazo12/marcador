@@ -469,19 +469,62 @@
         );
 
         // VOZ: dice las frases en voz alta (speechSynthesis)
+        let spanishVoice = null;
+        let speechUnlocked = false;
+
+        function loadVoices() {
+            if (!('speechSynthesis' in window)) return;
+            const voices = speechSynthesis.getVoices();
+            if (!voices.length) return;
+            const es = voices.filter(v => (v.lang || '').toLowerCase().replace('_', '-').startsWith('es'));
+            spanishVoice =
+                es.find(v => v.lang.replace('_', '-').toLowerCase() === 'es-mx') ||
+                es.find(v => v.lang.replace('_', '-').toLowerCase() === 'es-us') ||
+                es[0] || null;
+        }
+        if ('speechSynthesis' in window) {
+            loadVoices();
+            speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        // iPad: la primera voz debe iniciarse con un toque del usuario
+        function unlockSpeech() {
+            if (speechUnlocked || !('speechSynthesis' in window)) return;
+            speechUnlocked = true;
+            try {
+                const u = new SpeechSynthesisUtterance(' ');
+                u.volume = 0;
+                speechSynthesis.speak(u);
+            } catch (e) { speechUnlocked = false; }
+        }
+        ['touchend', 'click'].forEach(ev =>
+            document.addEventListener(ev, unlockSpeech, { passive: true })
+        );
+
         function speak(text) {
             if (!soundEnabled || !('speechSynthesis' in window)) return;
             try {
-                speechSynthesis.cancel();
+                loadVoices();
+                if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
                 const u = new SpeechSynthesisUtterance(text);
-                u.lang = 'es-MX';
-                u.rate = 1.05;
+                if (spanishVoice) {
+                    u.voice = spanishVoice;
+                    u.lang = spanishVoice.lang;
+                } else {
+                    u.lang = 'es-MX';
+                }
+                u.rate = 1.0;
                 u.pitch = 1.1;
+                u.volume = 1;
                 // En iPad la voz puede dejar mudo el audio; al terminar se reactiva
                 const reactivar = () => setTimeout(initAudio, 50);
                 u.onend = reactivar;
                 u.onerror = reactivar;
-                speechSynthesis.speak(u);
+                // Pequeña pausa: Safari ignora speak() justo después de cancel()
+                setTimeout(() => {
+                    speechSynthesis.resume();
+                    speechSynthesis.speak(u);
+                }, 80);
             } catch (e) {
                 console.log("Error al reproducir voz:", e);
             }
