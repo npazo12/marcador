@@ -144,10 +144,10 @@
             <div class="arcade-font text-3xl md:text-4xl text-white tracking-widest" id="matchTimer">05:00</div>
         </div>
 
-        <!-- CONTROLES DE RELOJ Y VOZ -->
+        <!-- CONTROLES DE RELOJ Y AUDIO -->
         <div class="flex items-center gap-2">
-            <button onclick="toggleSpeech()" id="btnSpeechToggle" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-bold transition shadow-lg text-sm" title="Activar/Desactivar Narrador">
-                🔊 Voz: ON
+            <button onclick="toggleSound()" id="btnSoundToggle" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-bold transition shadow-lg text-sm" title="Activar/Desactivar Efectos de Sonido">
+                🔊 Sonido: ON
             </button>
             <button onclick="toggleTimer()" id="btnPlayPause" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl font-bold transition shadow-lg flex items-center gap-1 text-sm">
                 ▶ Iniciar
@@ -426,47 +426,141 @@
         let tempStadiumImage = '';
         let matchHistory = [];
         let currentIncidentType = '';
-        let speechEnabled = true;
+        let soundEnabled = true;
 
-        // MOTOR DE VOZ NATIVO ROBUSTO (OPTIMIZADO PARA MÓVILES)
-        function speakText(text) {
-            if (!speechEnabled || !('speechSynthesis' in window)) return;
-            
-            window.speechSynthesis.cancel(); // Limpia cualquier cola atascada
+        // MOTOR DE AUDIO SINTÉTICO (Web Audio API) con desbloqueo para iPad / Safari
+        let audioCtx = null;
+        let iosUnlocked = false;
 
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'es-ES'; // Español general altamente compatible en iOS y Android
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
+        function initAudio() {
+            // iPadOS 17+: audio en modo "reproducción" (ignora el switch de silencio)
+            try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
 
-            // Intentar asignar voz en español si el sistema la tiene disponible
-            const voices = window.speechSynthesis.getVoices();
-            const spanishVoice = voices.find(v => v.lang.includes('es') || v.lang.includes('ES'));
-            if (spanishVoice) {
-                utterance.voice = spanishVoice;
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state !== 'running') {
+                audioCtx.resume();
             }
 
-            window.speechSynthesis.speak(utterance);
+            // Truco para iPads más viejos: un <audio> silencioso en loop
+            if (!iosUnlocked) {
+                iosUnlocked = true;
+                const a = document.createElement('audio');
+                a.setAttribute('playsinline', '');
+                a.loop = true;
+                a.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQQAAAAAAAA=';
+                a.play().catch(() => { iosUnlocked = false; });
+            }
         }
 
-        // Cargar voces en segundo plano para navegadores móviles
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = () => {
-                window.speechSynthesis.getVoices();
-            };
+        // Desbloquear con el primer toque en cualquier parte de la página
+        ['touchstart', 'touchend', 'click'].forEach(ev =>
+            document.addEventListener(ev, initAudio, { passive: true })
+        );
+
+        // VOZ: dice las frases en voz alta (speechSynthesis)
+        function speak(text) {
+            if (!soundEnabled || !('speechSynthesis' in window)) return;
+            try {
+                speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'es-MX';
+                u.rate = 1.05;
+                u.pitch = 1.1;
+                speechSynthesis.speak(u);
+            } catch (e) {
+                console.log("Error al reproducir voz:", e);
+            }
         }
 
-        function toggleSpeech() {
-            speechEnabled = !speechEnabled;
-            const btn = document.getElementById('btnSpeechToggle');
-            if (speechEnabled) {
-                btn.innerHTML = '🔊 Voz: ON';
+        // Efectos de sonido dinámicos para el partido
+        function playSoundEffect(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+
+                if (type === 'goal') {
+                    // Tono triunfal de gol (Acorde alegre ascendente)
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, index) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + index * 0.08);
+                        gain.gain.setValueAtTime(0.2, now + index * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.08 + 0.25);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + index * 0.08);
+                        osc.stop(now + index * 0.08 + 0.25);
+                    });
+                } else if (type === 'start') {
+                    // Tono de inicio de partido
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'yellow' || type === 'foul') {
+                    // Tono de advertencia / tarjeta
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, now);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'red') {
+                    // Tono grave de tarjeta roja
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else {
+                    // Tono genérico de clic / cambio
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                }
+            } catch (e) {
+                console.log("Error al reproducir sonido sintético:", e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('btnSoundToggle');
+            if (soundEnabled) {
+                btn.innerHTML = '🔊 Sonido: ON';
                 btn.className = 'bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-bold transition shadow-lg text-sm';
-                speakText("Narrador activado");
+                playSoundEffect('start');
             } else {
-                btn.innerHTML = '🔇 Voz: OFF';
+                btn.innerHTML = '🔇 Sonido: OFF';
                 btn.className = 'bg-slate-800 hover:bg-slate-700 text-slate-400 px-3 py-2 rounded-xl font-bold transition shadow-lg text-sm';
+                try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
             }
         }
 
@@ -493,6 +587,7 @@
         });
 
         function goToStepStadium() {
+            playSoundEffect('click');
             const nameInput = document.getElementById('inputTournamentName').value.trim();
             if (nameInput) tournamentData.name = nameInput;
             tournamentData.trophyImage = tempTrophyImage;
@@ -502,11 +597,15 @@
         }
 
         function backToStepTournament() {
+            playSoundEffect('click');
             document.getElementById('stepStadiumScreen').classList.add('hidden');
             document.getElementById('stepTournamentScreen').classList.remove('hidden');
         }
 
         function startTournament() {
+            initAudio(); // Desbloqueo definitivo de audio para iPad al tocar este botón
+            playSoundEffect('start');
+
             const stadiumInput = document.getElementById('inputStadiumName').value.trim();
             if (stadiumInput) tournamentData.stadium = stadiumInput;
             tournamentData.stadiumImage = tempStadiumImage;
@@ -531,17 +630,10 @@
 
             document.getElementById('stepStadiumScreen').classList.add('hidden');
             resetFullMatch();
-
-            // DESBLOQUEO MAESTRO DE AUDIO: Forzar síntesis al hacer clic en comenzar
-            if ('speechSynthesis' in window) {
-                const unlockUtterance = new SpeechSynthesisUtterance(" ");
-                window.speechSynthesis.speak(unlockUtterance);
-            }
-
-            speakText(`Comienza el torneo ${tournamentData.name} en el ${tournamentData.stadium}`);
         }
 
         function openTournamentScreen() {
+            playSoundEffect('click');
             closeSettings();
             document.getElementById('inputTournamentName').value = tournamentData.name;
             document.getElementById('inputStadiumName').value = tournamentData.stadium;
@@ -553,17 +645,21 @@
                 scoreA = Math.max(0, scoreA + delta);
                 document.getElementById('scoreA').innerText = scoreA;
                 if (delta > 0) {
-                    const goalPhrase = triggerGoalAnimation();
+                    triggerGoalAnimation();
                     addHistoryItem('⚽ Gol', teamA.name, teamA.captain);
-                    speakText(`${goalPhrase}! ¡Gol del equipo ${teamA.name}!`);
+                    playSoundEffect('goal');
+                } else {
+                    playSoundEffect('click');
                 }
             } else {
                 scoreB = Math.max(0, scoreB + delta);
                 document.getElementById('scoreB').innerText = scoreB;
                 if (delta > 0) {
-                    const goalPhrase = triggerGoalAnimation();
+                    triggerGoalAnimation();
                     addHistoryItem('⚽ Gol', teamB.name, teamB.captain);
-                    speakText(`${goalPhrase}! ¡Gol del equipo ${teamB.name}!`);
+                    playSoundEffect('goal');
+                } else {
+                    playSoundEffect('click');
                 }
             }
             checkOnFire();
@@ -576,6 +672,7 @@
             const selectedPhrase = phrases[Math.floor(Math.random() * phrases.length)];
             
             popupText.innerText = selectedPhrase;
+            speak(selectedPhrase.replace(/[¡!]/g, ''));
             popup.classList.remove('hidden');
             document.getElementById('mainBody').classList.add('screen-shake');
 
@@ -590,8 +687,6 @@
                 popup.classList.add('hidden');
                 document.getElementById('mainBody').classList.remove('screen-shake');
             }, 800);
-
-            return selectedPhrase;
         }
 
         function checkOnFire() {
@@ -616,6 +711,7 @@
         }
 
         function openIncidentModal(type) {
+            playSoundEffect('click');
             currentIncidentType = type;
             document.getElementById('incidentModalTitle').innerText = `Registrar ${type}`;
             
@@ -630,6 +726,7 @@
         }
 
         function closeIncidentModal() {
+            playSoundEffect('click');
             document.getElementById('incidentModal').classList.add('hidden');
         }
 
@@ -642,14 +739,12 @@
             triggerIncidentAnimation(currentIncidentType, teamName, player);
             addHistoryItem(getIncidentIcon(currentIncidentType) + ' ' + currentIncidentType, teamName, player);
 
-            if (currentIncidentType === 'Amarilla') {
-                speakText(`Tarjeta amarilla para el equipo ${teamName}, ${player}`);
+            if (currentIncidentType === 'Amarilla' || currentIncidentType === 'Falta') {
+                playSoundEffect('yellow');
             } else if (currentIncidentType === 'Roja') {
-                speakText(`¡Tarjeta roja! Expulsado del equipo ${teamName}, ${player}`);
-            } else if (currentIncidentType === 'Cambio') {
-                speakText(`Sustitución en el equipo ${teamName}, entra ${player}`);
+                playSoundEffect('red');
             } else {
-                speakText(`Falta marcada al equipo ${teamName}`);
+                playSoundEffect('click');
             }
         }
 
@@ -672,6 +767,7 @@
 
             titleEl.innerText = type === 'Amarilla' ? 'TARJETA AMARILLA' : type === 'Roja' ? 'TARJETA ROJA' : type.toUpperCase();
             subEl.innerText = `${teamName} • ${player}`;
+            speak(titleEl.innerText);
 
             if (type === 'Falta') {
                 emojiEl.innerText = '⚠️';
@@ -731,6 +827,7 @@
         let currentHalf = 1;
 
         function toggleTimer() {
+            playSoundEffect('click');
             if (isRunning) {
                 clearInterval(timerInterval);
                 isRunning = false;
@@ -760,6 +857,7 @@
         }
 
         function resetTimer() {
+            playSoundEffect('click');
             clearInterval(timerInterval);
             isRunning = false;
             timeLeft = maxMinutes * 60;
@@ -769,29 +867,30 @@
         }
 
         function setDuration(mins) {
+            playSoundEffect('click');
             maxMinutes = mins;
             resetTimer();
             closeSettings();
         }
 
         function handleHalfOrFullTime() {
+            playSoundEffect('start');
             if (currentHalf === 1) {
                 document.getElementById('htScoreA').innerText = scoreA;
                 document.getElementById('htScoreB').innerText = scoreB;
                 document.getElementById('halfTimeOverlay').classList.remove('hidden');
-                speakText("Final del primer tiempo. A descansar.");
             } else {
                 showWinnerScreen();
             }
         }
 
         function startSecondHalf() {
+            playSoundEffect('start');
             currentHalf = 2;
             document.getElementById('halfIndicator').innerText = '2do Tiempo';
             document.getElementById('halfTimeOverlay').classList.add('hidden');
             resetTimer();
             toggleTimer();
-            speakText("Arranca el segundo tiempo.");
         }
 
         function showWinnerScreen() {
@@ -844,12 +943,7 @@
             }
 
             winnerOverlay.classList.remove('hidden');
-
-            if (scoreA !== scoreB) {
-                speakText(`¡Terminó el partido! El gran campeón de la ${tournamentData.name} es el equipo ${winnerName}!`);
-            } else {
-                speakText("¡Terminó el partido en empate técnico!");
-            }
+            playSoundEffect('goal');
 
             setTimeout(() => {
                 const duration = 3.5 * 1000;
@@ -879,6 +973,7 @@
         }
 
         function restartTournamentCycle() {
+            playSoundEffect('click');
             document.getElementById('winnerOverlay').classList.add('hidden');
             document.getElementById('stepTournamentScreen').classList.remove('hidden');
         }
@@ -903,6 +998,7 @@
 
         let tempLogoFile = '';
         function openTeamSettings(teamKey) {
+            playSoundEffect('click');
             activeTeamModal = teamKey;
             const team = teamKey === 'A' ? teamA : teamB;
             document.getElementById('teamModalTitle').innerText = `Configurar ${teamKey === 'A' ? 'Equipo Local' : 'Visitante'}`;
@@ -926,6 +1022,7 @@
         });
 
         function saveTeamSettings() {
+            playSoundEffect('click');
             if (activeTeamModal === 'A') {
                 teamA.name = document.getElementById('inputTeamName').value || 'LOCAL';
                 teamA.captain = document.getElementById('inputCaptainName').value || '';
@@ -969,14 +1066,17 @@
         }
 
         function closeTeamSettings() {
+            playSoundEffect('click');
             document.getElementById('teamSettingsModal').classList.add('hidden');
         }
 
         function openSettings() {
+            playSoundEffect('click');
             document.getElementById('settingsModal').classList.remove('hidden');
         }
 
         function closeSettings() {
+            playSoundEffect('click');
             document.getElementById('settingsModal').classList.add('hidden');
         }
     </script>
