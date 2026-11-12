@@ -90,11 +90,11 @@
 
         /* Pantalla horizontal: la ventana de equipos se ensancha y muestra más columnas */
         @media (orientation: landscape) and (min-width: 640px) {
-            #teamsCard { max-width: min(94vw, 64rem); }
-            .teams-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+            #teamsCard { max-width: min(94vw, 64rem) !important; }
+            #teamsCard .teams-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
         }
         @media (orientation: landscape) and (min-width: 960px) {
-            .teams-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+            #teamsCard .teams-grid { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
         }
 
         /* MODO EXTERIORES (Luz Solar) */
