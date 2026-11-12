@@ -88,6 +88,24 @@
             visibility: hidden;
         }
 
+        /* Césped de cancha (fondo por defecto). Si se elige foto de estadio, la foto lo reemplaza */
+        .grass-bg, .grass-fill {
+            background-image:
+                radial-gradient(ellipse at center, rgba(255,255,255,0.14) 0%, rgba(0,0,0,0.28) 100%),
+                repeating-linear-gradient(0deg, rgba(0,0,0,0.045) 0 2px, rgba(255,255,255,0.02) 2px 4px),
+                repeating-linear-gradient(90deg, #3f9f45 0 90px, #35903b 90px 180px);
+        }
+        #mainBody.grass-bg::before { background-color: rgba(3, 7, 18, 0.18); }
+        #mainBody.theme-outdoor.grass-bg::before { background-color: rgba(255, 255, 255, 0.2) !important; }
+        .marcador-title {
+            color: #ffffff;
+            text-shadow: 0 4px 0 rgba(0,0,0,0.35), 0 8px 18px rgba(0,0,0,0.55);
+            letter-spacing: 0.08em;
+        }
+        /* Logos completos dentro de los círculos: el cuadrado que cabe en un círculo mide ~71% */
+        .logo-fit { width: 72%; height: 72%; object-fit: contain; }
+        .logo-circle:has(> img:not(.hidden)) { background: #ffffff !important; }
+
         /* Pantalla horizontal: la ventana de equipos se ensancha y muestra más columnas */
         @media (orientation: landscape) and (min-width: 640px) {
             #teamsCard { max-width: min(94vw, 64rem) !important; }
@@ -145,11 +163,13 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-between p-4 relative overflow-x-hidden" id="mainBody">
+<body class="grass-bg bg-slate-950 text-white min-h-screen flex flex-col items-center justify-between p-4 relative overflow-x-hidden" id="mainBody">
 
     <!-- PASO 1: CONFIGURACIÓN DEL TORNEO Y TROFEO -->
-    <div id="stepTournamentScreen" class="bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center">
-        <div class="bg-slate-900 border-2 border-yellow-500/50 p-8 rounded-3xl shadow-2xl max-w-md w-full pop-anim max-h-[90vh] overflow-y-auto">
+    <div id="stepTournamentScreen" class="flex flex-col items-center p-6 text-center overflow-y-auto">
+        <div class="my-auto w-full flex flex-col items-center">
+        <h1 class="marcador-title arcade-font text-5xl md:text-6xl mb-5">⚽ MARCADOR ⚽</h1>
+        <div class="bg-slate-900 border-2 border-yellow-500/50 p-8 rounded-3xl shadow-2xl max-w-md w-full pop-anim">
             <span class="text-5xl mb-3 block">🏆</span>
             <h1 class="arcade-font text-3xl text-yellow-400 mb-2">PASO 1: EL TORNEO</h1>
             <p class="text-slate-300 mb-6 text-sm">Elige el trofeo que se juega. Si no está en la lista, usa "Otro trofeo".</p>
@@ -208,6 +228,7 @@
             <button onclick="goToStepStadium()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 arcade-font py-4 rounded-2xl shadow-xl text-xl transition transform hover:scale-105 font-bold">
                 Siguiente: Estadio 🏟️
             </button>
+        </div>
         </div>
     </div>
 
@@ -291,8 +312,8 @@
                 🔥 ON FIRE
             </div>
             
-            <div class="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner mb-4 cursor-pointer" onclick="openTeamSettings('A')">
-                <img id="logoDisplayA" src="" alt="Logo A" class="w-full h-full object-cover hidden">
+            <div class="w-28 h-28 rounded-full logo-circle bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner mb-4 cursor-pointer" onclick="openTeamSettings('A')">
+                <img id="logoDisplayA" src="" alt="Logo A" class="logo-fit hidden">
                 <span id="logoFallbackA" class="text-4xl">⚽</span>
             </div>
 
@@ -320,8 +341,8 @@
                 🔥 ON FIRE
             </div>
 
-            <div class="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner mb-4 cursor-pointer" onclick="openTeamSettings('B')">
-                <img id="logoDisplayB" src="" alt="Logo B" class="w-full h-full object-cover hidden">
+            <div class="w-28 h-28 rounded-full logo-circle bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner mb-4 cursor-pointer" onclick="openTeamSettings('B')">
+                <img id="logoDisplayB" src="" alt="Logo B" class="logo-fit hidden">
                 <span id="logoFallbackB" class="text-4xl">🛡️</span>
             </div>
 
@@ -393,8 +414,8 @@
             <p class="text-slate-300 mb-6">El primer tiempo ha concluido. ¡A recargar energías!</p>
             <div class="flex items-center justify-center gap-3 mb-8">
                 <div class="flex flex-col items-center gap-2 w-24">
-                    <div class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner">
-                        <img id="htLogoA" src="" alt="Logo local" class="w-full h-full object-cover hidden">
+                    <div class="w-20 h-20 rounded-full logo-circle bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner">
+                        <img id="htLogoA" src="" alt="Logo local" class="logo-fit hidden">
                         <span id="htInitialA" class="arcade-font text-3xl text-white">L</span>
                     </div>
                     <span id="htNameA" class="text-xs font-bold text-slate-200 uppercase tracking-wide break-words text-center">LOCAL</span>
@@ -403,8 +424,8 @@
                     <span id="htScoreA">0</span><span class="text-slate-500">-</span><span id="htScoreB">0</span>
                 </div>
                 <div class="flex flex-col items-center gap-2 w-24">
-                    <div class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner">
-                        <img id="htLogoB" src="" alt="Logo visitante" class="w-full h-full object-cover hidden">
+                    <div class="w-20 h-20 rounded-full logo-circle bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-slate-700 shadow-inner">
+                        <img id="htLogoB" src="" alt="Logo visitante" class="logo-fit hidden">
                         <span id="htInitialB" class="arcade-font text-3xl text-white">V</span>
                     </div>
                     <span id="htNameB" class="text-xs font-bold text-slate-200 uppercase tracking-wide break-words text-center">VISITANTE</span>
@@ -418,11 +439,12 @@
 
     <!-- OVERLAY DE GANADOR REORGANIZADO -->
     <div id="winnerOverlay" class="flex flex-col items-center justify-center p-6 hidden overflow-y-auto bg-slate-950/95" style="background-size: cover; background-position: center; background-repeat: no-repeat;">
+        <div class="my-auto w-full max-w-md md:max-w-5xl flex flex-col items-center gap-3">
         <!-- Vertical en celular; horizontal en iPad (trofeo | textos | escudo) -->
-        <div class="bg-slate-900 border-2 border-yellow-400 p-6 md:px-10 md:py-8 rounded-3xl shadow-[0_0_50px_rgba(250,204,21,0.3)] max-w-md md:max-w-5xl w-full text-center pop-anim my-auto grid grid-cols-1 md:grid-cols-[1fr_1.4fr_1fr] md:gap-x-8 items-center justify-items-center">
+        <div class="bg-slate-900 border-2 border-yellow-400 p-6 md:px-10 md:py-8 rounded-3xl shadow-[0_0_50px_rgba(250,204,21,0.3)] w-full text-center pop-anim grid grid-cols-1 md:grid-cols-[1fr_1.4fr_1fr] md:gap-x-8 items-center justify-items-center">
 
             <!-- 1. Imagen del trofeo (izquierda en iPad) -->
-            <div class="w-24 h-24 md:w-56 md:h-56 mb-3 md:mb-0 md:col-start-1 md:row-start-1 md:row-span-3 flex items-center justify-center drop-shadow-[0_10px_20px_rgba(250,204,21,0.5)] overflow-hidden rounded-2xl bg-slate-950/50 border border-yellow-500/30">
+            <div class="w-24 h-24 md:w-56 md:h-56 mb-3 md:mb-0 md:col-start-1 md:row-start-1 md:row-span-2 flex items-center justify-center drop-shadow-[0_10px_20px_rgba(250,204,21,0.5)] overflow-hidden rounded-2xl bg-slate-950/50 border border-yellow-500/30">
                 <img id="winnerTrophyImg" src="" alt="Trofeo" class="max-h-full max-w-full object-contain hidden">
                 <span id="winnerTrophyFallback" class="text-5xl md:text-8xl">🏆</span>
             </div>
@@ -434,42 +456,46 @@
             </div>
 
             <!-- 4. Imagen del equipo ganador (derecha en iPad) -->
-            <div id="winnerShieldContainer" class="w-20 h-20 md:w-56 md:h-56 rounded-full bg-slate-800 border-4 border-yellow-400 flex items-center justify-center overflow-hidden mb-2 md:mb-0 md:col-start-3 md:row-start-1 md:row-span-3 shadow-xl">
-                <img id="winnerLogo" src="" alt="Logo" class="w-full h-full object-cover hidden">
+            <div id="winnerShieldContainer" class="w-20 h-20 md:w-56 md:h-56 rounded-full logo-circle bg-slate-800 border-4 border-yellow-400 flex items-center justify-center overflow-hidden mb-2 md:mb-0 md:col-start-3 md:row-start-1 md:row-span-2 shadow-xl">
+                <img id="winnerLogo" src="" alt="Logo" class="logo-fit hidden">
                 <span id="winnerFallback" class="text-4xl md:text-8xl">🏆</span>
             </div>
 
             <!-- 5 y 6. Nombre del equipo ganador + estadio (centro) -->
             <div class="flex flex-col items-center md:col-start-2 md:row-start-2">
                 <h3 id="winnerTeamName" class="arcade-font text-2xl md:text-4xl text-white mb-2">NOMBRE DEL EQUIPO</h3>
-                <p id="winnerStadiumName" class="text-xs md:text-sm text-yellow-400 uppercase font-semibold tracking-widest mb-6 md:mb-2">Estadio BBVA</p>
+                <p id="winnerStadiumName" class="text-xs md:text-sm text-yellow-400 uppercase font-semibold tracking-widest mb-1 md:mb-2">Estadio BBVA</p>
             </div>
-
-            <!-- 7. Botón de jugar nuevo partido (Regresa al Paso 1) -->
-            <button onclick="restartTournamentCycle()" class="w-full md:col-start-2 md:row-start-3 md:mt-4 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 arcade-font py-3 rounded-2xl shadow-xl text-lg transition transform hover:scale-105 font-bold">
-                Jugar Nuevo Partido 🔄
-            </button>
         </div>
 
-        <!-- Resultado del partido en chico, debajo de la ventana del ganador -->
-        <div class="mt-4 shrink-0 bg-slate-900 border border-yellow-500/40 rounded-2xl px-4 py-2 shadow-xl flex items-center justify-center gap-3 max-w-full">
-            <div class="flex items-center gap-2 min-w-0">
-                <div class="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
-                    <img id="wsLogoA" src="" alt="" class="w-full h-full object-cover hidden">
-                    <span id="wsInitialA" class="arcade-font text-sm text-white">L</span>
+        <!-- Resultado del partido, pegado a la ventana del campeón -->
+        <div class="w-full md:max-w-2xl bg-slate-900 border-2 border-yellow-500/50 rounded-2xl px-4 py-3 shadow-xl flex flex-col items-center gap-1">
+            <span class="text-[10px] md:text-xs uppercase tracking-widest text-slate-400 font-bold">Resultado final</span>
+            <div class="w-full flex items-center justify-center gap-3">
+                <div class="flex items-center gap-2 flex-1 min-w-0 justify-start">
+                    <div class="w-12 h-12 md:w-16 md:h-16 rounded-full logo-circle bg-slate-800 border-2 border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
+                        <img id="wsLogoA" src="" alt="" class="logo-fit hidden">
+                        <span id="wsInitialA" class="arcade-font text-xl text-white">L</span>
+                    </div>
+                    <span id="wsNameA" class="text-sm md:text-lg font-bold text-slate-200 uppercase tracking-wide truncate">LOCAL</span>
                 </div>
-                <span id="wsNameA" class="text-xs font-bold text-slate-200 uppercase tracking-wide truncate max-w-[110px] md:max-w-[180px]">LOCAL</span>
-            </div>
-            <div class="arcade-font text-2xl text-yellow-400 flex items-center gap-2 shrink-0">
-                <span id="wsScoreA">0</span><span class="text-slate-500">-</span><span id="wsScoreB">0</span>
-            </div>
-            <div class="flex items-center gap-2 min-w-0">
-                <span id="wsNameB" class="text-xs font-bold text-slate-200 uppercase tracking-wide truncate max-w-[110px] md:max-w-[180px]">VISITANTE</span>
-                <div class="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
-                    <img id="wsLogoB" src="" alt="" class="w-full h-full object-cover hidden">
-                    <span id="wsInitialB" class="arcade-font text-sm text-white">V</span>
+                <div class="arcade-font text-4xl md:text-5xl text-yellow-400 flex items-center gap-2 shrink-0">
+                    <span id="wsScoreA">0</span><span class="text-slate-500">-</span><span id="wsScoreB">0</span>
+                </div>
+                <div class="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                    <span id="wsNameB" class="text-sm md:text-lg font-bold text-slate-200 uppercase tracking-wide truncate">VISITANTE</span>
+                    <div class="w-12 h-12 md:w-16 md:h-16 rounded-full logo-circle bg-slate-800 border-2 border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
+                        <img id="wsLogoB" src="" alt="" class="logo-fit hidden">
+                        <span id="wsInitialB" class="arcade-font text-xl text-white">V</span>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Botón de jugar nuevo partido (último elemento; regresa al Paso 1) -->
+        <button onclick="restartTournamentCycle()" class="w-full md:max-w-md mt-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 arcade-font py-3 rounded-2xl shadow-xl text-lg transition transform hover:scale-105 font-bold">
+            Jugar Nuevo Partido 🔄
+        </button>
         </div>
     </div>
 
@@ -833,6 +859,7 @@
                     tempStadiumImage = evt.target.result;
                     tournamentData.stadiumImage = tempStadiumImage;
                     document.getElementById('mainBody').style.backgroundImage = `url('${tempStadiumImage}')`;
+                    document.getElementById('mainBody').classList.remove('grass-bg');
                 };
                 reader.readAsDataURL(file);
             }
@@ -1240,6 +1267,7 @@
 
             if (tournamentData.stadiumImage) {
                 document.getElementById('mainBody').style.backgroundImage = `url('${tournamentData.stadiumImage}')`;
+                document.getElementById('mainBody').classList.remove('grass-bg');
             }
 
             document.getElementById('stepStadiumScreen').classList.add('hidden');
@@ -1590,6 +1618,7 @@
             });
 
             const winnerOverlay = document.getElementById('winnerOverlay');
+            winnerOverlay.classList.toggle('grass-fill', !tournamentData.stadiumImage);
             if (tournamentData.stadiumImage) {
                 winnerOverlay.style.backgroundImage = `url('${tournamentData.stadiumImage}')`;
             }
